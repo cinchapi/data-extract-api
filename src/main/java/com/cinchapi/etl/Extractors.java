@@ -42,7 +42,7 @@ public final class Extractors {
      * @param file
      * @return the {@link Extractor}
      */
-    public Extractor<Path> csv() {
+    public static Extractor<Path> csv() {
         return file -> {
             Verify.thatArgument(file.toFile().exists(),
                     "Cannot extract dta from {} because it does not exist",
