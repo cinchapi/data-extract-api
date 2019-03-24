@@ -15,13 +15,14 @@
  */
 package com.cinchapi.etl;
 
+import java.util.Collection;
 import java.util.Map;
 
 /**
  * An {@link Extractor} is a function that can pull data from a source and
- * represents it as a {@link Map mapping} from {@link String} (e.g. the
- * property/attribute key) to {@link Object} (e.g. the property/attribute
- * value).
+ * represents it as a collection of {@link Map mappings} from {@link String}
+ * (e.g. the property/attribute key) to {@link Object} (e.g. the
+ * property/attribute value).
  * 
  * @author Jeff Nelson
  * @param <T> - The data source type
@@ -30,14 +31,13 @@ import java.util.Map;
 public interface Extractor<T> {
 
     /**
-     * Extract the data from the {@code source} as a {@link Map mapping} from
-     * {@link String} (e.g. the property/attribute key) to {@link Object} (e.g.
-     * the property/attribute
-     * value)
+     * Extract the data from the {@code source} as a collection of {@link Map
+     * mappings} from {@link String} (e.g. the property/attribute key) to
+     * {@link Object} (e.g. the property/attribute value)
      * 
      * @param source
      * @return the extracted data
      */
-    public Map<String, Object> extract(T source);
+    public Collection<Map<String, Object>> extract(T source);
 
 }
