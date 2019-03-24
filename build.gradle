@@ -1,0 +1,148 @@
+buildscript {
+  repositories {
+    mavenCentral()
+    maven {
+      url "https://plugins.gradle.org/m2/"
+    }
+  }
+  dependencies {
+    classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3"
+  }
+}
+
+plugins {
+  id 'java'
+  id 'maven'
+  id 'eclipse'
+  id 'maven-publish'
+  id 'com.jfrog.bintray' version '1.7.3'
+}
+
+publishing {
+  publications {
+    BintrayPublication(MavenPublication) {
+      from components.java
+      artifact sourcesJar
+      artifact javadocJar
+      artifact testJar
+      groupId group
+      artifactId project.name
+      version mavenVersion
+    }
+  }
+}
+
+// The project version is controlled externally by the "version.sh" script.
+def getVersion = { ->
+  def stdout = new ByteArrayOutputStream()
+  exec {
+    commandLine 'bash', 'version.sh'
+    standardOutput = stdout
+  }
+  return stdout.toString().trim()
+}
+
+group = 'com.cinchapi'
+version = getVersion()
+// Drop the build component from version number and use that for
+// publishing
+ext.mavenVersion = version.split('\\.')
+ext.mavenVersion[3] = ext.mavenVersion[3].replaceAll("[0-9]+-", "-")
+ext.mavenVersion[3] = ext.mavenVersion[3].replaceAll("[0-9]+", "").trim()
+ext.mavenVersion = ext.mavenVersion.join(".").replace(".-", "-").replaceAll('\\.$', "")
+
+repositories {
+  mavenCentral()
+  maven {
+    url 'https://oss.sonatype.org/content/repositories/snapshots/'
+  }
+  maven {
+    url 'http://cinchapi.bintray.com/maven'
+  }
+  maven {
+    url 'http://cinchapi.bintray.com/maven-snapshots'
+  }
+  maven {
+    url  "http://cinchapi.bintray.com/maven-enterprise"
+    credentials {
+      username System.getenv('BINTRAY_USER')
+      password System.getenv('BINTRAY_KEY')
+    }
+  }
+  maven {
+    url  "http://cinchapi.bintray.com/maven-snapshots-enterprise"
+    credentials {
+      username System.getenv('BINTRAY_USER')
+      password System.getenv('BINTRAY_KEY')
+    }
+  }
+}
+
+bintray {
+  user = System.getenv('BINTRAY_USER')
+  key = System.getenv('BINTRAY_KEY')
+  publications = ['BintrayPublication']
+  pkg {
+    repo = mavenVersion.matches('^[0-9]+\\.[0-9]+\\.[0-9]+(-rc[0-9]+){0,1}$') ? 'maven' : 'maven-snapshots'
+    name = project.name
+    publish = true
+    userOrg = 'cinchapi'
+    override = true
+    version {
+        name = mavenVersion
+        released = new Date()
+    }
+  }
+}
+
+jar {
+  manifest {
+    attributes("Specificiation-Title": project.name, "Specificiation-Version": version, "Implementation-Version": version)
+  }
+}
+
+if (JavaVersion.current().isJava8Compatible()) {
+    allprojects {
+        tasks.withType(Javadoc) {
+            options.addStringOption('Xdoclint:none', '-quiet')
+        }
+    }
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+  classifier = 'javadoc'
+  from javadoc.destinationDir
+}
+
+task sourcesJar(type: Jar, dependsOn: classes) {
+  classifier = 'sources'
+  from sourceSets.main.allSource
+}
+
+task testJar(type: Jar, dependsOn: classes) {
+  classifier = 'tests'
+  from sourceSets.test.output
+}
+
+artifacts {
+  archives sourcesJar
+  archives testJar
+  archives javadocJar
+}
+
+// Ensure that these transitive dependencies are excluded so we don't get version clashes
+def exclusions = [[group : 'com.google.guava', module: 'guava']]
+exclusions.each { exclusion ->
+    configurations.compile.dependencies.all {
+        if (name != exclusion.module || group != exclusion.group) {
+            exclude group: exclusion.group, module: exclusion.module
+        }
+    }
+}
+
+dependencies {
+  compile 'com.google.guava:guava:25.1-jre'
+  compile group: 'com.cinchapi', name: 'accent4j', version: '1.2.0', changing:true
+
+  testCompile 'junit:junit:4.11'
+}
