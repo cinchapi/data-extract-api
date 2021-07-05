@@ -5,9 +5,6 @@ buildscript {
       url "https://plugins.gradle.org/m2/"
     }
   }
-  dependencies {
-    classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3"
-  }
 }
 
 plugins {
@@ -15,16 +12,26 @@ plugins {
   id 'maven'
   id 'eclipse'
   id 'maven-publish'
-  id 'com.jfrog.bintray' version '1.7.3'
 }
 
 publishing {
+  repositories {
+    maven {
+      name = 'cloudsmith'
+      def releasesRepoUrl = "https://api-g.cloudsmith.io/maven/cinchapi/platform/"
+      def snapshotsRepoUrl = "https://api-g.cloudsmith.io/maven/cinchapi/platform-snapshots/"
+      url = mavenVersion.endsWith('SNAPSHOT') ? snapshotsRepoUrl : releasesRepoUrl
+      credentials {
+        username = System.getenv('CLOUDSMITH_API_USER')
+        password = System.getenv('CLOUDSMITH_API_KEY')
+      }
+    }
+  }
   publications {
-    BintrayPublication(MavenPublication) {
+    maven(MavenPublication) {
       from components.java
       artifact sourcesJar
       artifact javadocJar
-      artifact testJar
       groupId group
       artifactId project.name
       version mavenVersion
@@ -57,40 +64,32 @@ repositories {
     url 'https://oss.sonatype.org/content/repositories/snapshots/'
   }
   maven {
-    url 'http://cinchapi.bintray.com/maven'
+    url "https://dl.cloudsmith.io/public/cinchapi/open-source/maven/"
   }
   maven {
-    url 'http://cinchapi.bintray.com/maven-snapshots'
+    url "https://dl.cloudsmith.io/public/cinchapi/open-source-snapshots/maven/"
   }
   maven {
-    url  "http://cinchapi.bintray.com/maven-enterprise"
+    url "https://dl.cloudsmith.io/public/cinchapi/platform/maven/"
+  }
+  maven {
+    url "https://dl.cloudsmith.io/public/cinchapi/platform-snapshots/maven/"
+  }
+  maven {
+    url "https://dl.cloudsmith.io/public/cinchapi/3rdparty/maven/"
+  }
+  maven {
+    url "https://dl.cloudsmith.io/public/cinchapi/enterprise/maven/"
     credentials {
-      username System.getenv('BINTRAY_USER')
-      password System.getenv('BINTRAY_KEY')
+      username = System.getenv('CLOUDSMITH_API_USER')
+      password = System.getenv('CLOUDSMITH_API_KEY')
     }
   }
   maven {
-    url  "http://cinchapi.bintray.com/maven-snapshots-enterprise"
+    url "https://dl.cloudsmith.io/public/cinchapi/enterprise-snapshots/maven/"
     credentials {
-      username System.getenv('BINTRAY_USER')
-      password System.getenv('BINTRAY_KEY')
-    }
-  }
-}
-
-bintray {
-  user = System.getenv('BINTRAY_USER')
-  key = System.getenv('BINTRAY_KEY')
-  publications = ['BintrayPublication']
-  pkg {
-    repo = mavenVersion.matches('^[0-9]+\\.[0-9]+\\.[0-9]+(-rc[0-9]+){0,1}$') ? 'maven' : 'maven-snapshots'
-    name = project.name
-    publish = true
-    userOrg = 'cinchapi'
-    override = true
-    version {
-        name = mavenVersion
-        released = new Date()
+      username = System.getenv('CLOUDSMITH_API_USER')
+      password = System.getenv('CLOUDSMITH_API_KEY')
     }
   }
 }
