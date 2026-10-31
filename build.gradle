@@ -39,11 +39,19 @@ publishing {
   }
 }
 
-// The project version is controlled externally by the "version.sh" script.
-def getVersion = { ->
+/**
+ * Create one semantic build version, or convert a supplied build version for
+ * publication without changing its counter. Fail when the shared tool fails.
+ */
+def getVersion = { String buildVersion = null ->
   def stdout = new ByteArrayOutputStream()
+  def arguments = ['bash', rootProject.file('.agents/tools/version').path,
+                   '--root', rootProject.projectDir.path]
+  if (buildVersion != null) {
+    arguments += ['--published', buildVersion]
+  }
   exec {
-    commandLine 'bash', 'version.sh'
+    commandLine arguments
     standardOutput = stdout
   }
   return stdout.toString().trim()
@@ -51,12 +59,7 @@ def getVersion = { ->
 
 group = 'com.cinchapi'
 version = getVersion()
-// Drop the build component from version number and use that for
-// publishing
-ext.mavenVersion = version.split('\\.')
-ext.mavenVersion[3] = ext.mavenVersion[3].replaceAll("[0-9]+-", "-")
-ext.mavenVersion[3] = ext.mavenVersion[3].replaceAll("[0-9]+", "").trim()
-ext.mavenVersion = ext.mavenVersion.join(".").replace(".-", "-").replaceAll('\\.$', "")
+ext.mavenVersion = getVersion(version.toString())
 
 repositories {
   mavenCentral()
