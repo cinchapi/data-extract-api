@@ -5,6 +5,12 @@ buildscript {
       url "https://plugins.gradle.org/m2/"
     }
   }
+  dependencies {
+    // Spotless needs Java 17 to run, and this build also runs on Java 8
+    if (JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17)) {
+      classpath 'com.diffplug.spotless:spotless-plugin-gradle:8.2.1'
+    }
+  }
 }
 
 plugins {
@@ -162,6 +168,20 @@ publishing {
       groupId group
       artifactId project.name
       version mavenVersion
+    }
+  }
+}
+
+// Format with the Cinchapi formatter when the build runs on Java 17 or later.
+// The repo's own copyright headers stay as they are, so there is no license
+// header step, and the Eclipse profile leaves header comments alone.
+if (JavaVersion.current().isCompatibleWith(JavaVersion.VERSION_17)) {
+  apply plugin: 'com.diffplug.spotless'
+  spotless {
+    java {
+      target 'src/*/java/**/*.java'
+      importOrderFile 'spotless.java.importerorder'
+      eclipse().configFile 'spotless.java.eclipseformat.xml'
     }
   }
 }
