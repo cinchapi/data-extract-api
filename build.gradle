@@ -8,37 +8,13 @@ buildscript {
 }
 
 plugins {
-  id 'java'
-  id 'maven'
+  id 'java-library'
   id 'eclipse'
   id 'maven-publish'
 }
 
-publishing {
-  repositories {
-    maven {
-      name = 'cloudsmith'
-      def releasesRepoUrl = "https://api-g.cloudsmith.io/maven/cinchapi/platform/"
-      def snapshotsRepoUrl = "https://api-g.cloudsmith.io/maven/cinchapi/platform-snapshots/"
-      // Only a master build publishes a plain X.Y.Z, so every other version,
-      // such as a release candidate or a feature build, is a snapshot.
-      url = (mavenVersion ==~ /\d+\.\d+\.\d+/) ? releasesRepoUrl : snapshotsRepoUrl
-      credentials {
-        username = System.getenv('CLOUDSMITH_API_USER')
-        password = System.getenv('CLOUDSMITH_API_KEY')
-      }
-    }
-  }
-  publications {
-    maven(MavenPublication) {
-      from components.java
-      artifact sourcesJar
-      artifact javadocJar
-      groupId group
-      artifactId project.name
-      version mavenVersion
-    }
-  }
+wrapper {
+  gradleVersion = '8.14.3'
 }
 
 // The project version is controlled externally by the "version.sh" script.
@@ -116,18 +92,25 @@ if (JavaVersion.current().isJava8Compatible()) {
     }
 }
 
+// Target Java 8, even when a newer JDK runs the build
+if (JavaVersion.current().isJava9Compatible()) {
+  tasks.withType(JavaCompile).configureEach {
+    options.release = 8
+  }
+}
+
 task javadocJar(type: Jar, dependsOn: javadoc) {
-  classifier = 'javadoc'
+  archiveClassifier = 'javadoc'
   from javadoc.destinationDir
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {
-  classifier = 'sources'
+  archiveClassifier = 'sources'
   from sourceSets.main.allSource
 }
 
 task testJar(type: Jar, dependsOn: classes) {
-  classifier = 'tests'
+  archiveClassifier = 'tests'
   from sourceSets.test.output
 }
 
@@ -140,7 +123,7 @@ artifacts {
 // Ensure that these transitive dependencies are excluded so we don't get version clashes
 def exclusions = [[group : 'com.google.guava', module: 'guava']]
 exclusions.each { exclusion ->
-    configurations.compile.dependencies.all {
+    configurations.implementation.dependencies.all {
         if (name != exclusion.module || group != exclusion.group) {
             exclude group: exclusion.group, module: exclusion.module
         }
@@ -148,9 +131,37 @@ exclusions.each { exclusion ->
 }
 
 dependencies {
-  compile 'com.google.guava:guava:25.1-jre'
-  compile group: 'com.cinchapi', name: 'accent4j', version: '1.18.4'
-  compile 'org.apache.commons:commons-csv:1.6'
+  api platform('com.cinchapi:cinchapi-bom:1.0.0')
+  implementation 'com.google.guava:guava'
+  implementation group: 'com.cinchapi', name: 'accent4j'
+  implementation 'org.apache.commons:commons-csv:1.6'
 
-  testCompile 'junit:junit:4.11'
+  testImplementation 'junit:junit'
+}
+
+publishing {
+  repositories {
+    maven {
+      name = 'cloudsmith'
+      def releasesRepoUrl = "https://api-g.cloudsmith.io/maven/cinchapi/platform/"
+      def snapshotsRepoUrl = "https://api-g.cloudsmith.io/maven/cinchapi/platform-snapshots/"
+      // Only a master build publishes a plain X.Y.Z, so every other version,
+      // such as a release candidate or a feature build, is a snapshot.
+      url = (mavenVersion ==~ /\d+\.\d+\.\d+/) ? releasesRepoUrl : snapshotsRepoUrl
+      credentials {
+        username = System.getenv('CLOUDSMITH_API_USER')
+        password = System.getenv('CLOUDSMITH_API_KEY')
+      }
+    }
+  }
+  publications {
+    maven(MavenPublication) {
+      from components.java
+      artifact sourcesJar
+      artifact javadocJar
+      groupId group
+      artifactId project.name
+      version mavenVersion
+    }
+  }
 }
